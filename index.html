@@ -135,6 +135,12 @@
 </section>
 
 <section>
+  <h2>🗺️ Hike of the Day</h2>
+  <div id="hike-of-day"></div>
+  <div class="note">Rotates daily. Link opens a search for the route so you can check current conditions/maps before heading out.</div>
+</section>
+
+<section>
   <h2>🚌 Bus Plans</h2>
   <ul class="link-list">
     <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener">VVT journey planner</a></li>
@@ -162,6 +168,36 @@ function updateCountdown() {
   }
 }
 updateCountdown();
+
+const HIKES = [
+  { name: "Rettenbach Glacier Trail", desc: "High-altitude walk near the Rettenbach ski area, glacier views." },
+  { name: "Gaislachkogl Panorama Trail", desc: "Ridge walk from the Gaislachkogl summit station, 360° Alpine views." },
+  { name: "Stubenwildbach Waterfall Circuit", desc: "Easy circular walk past waterfalls near Sölden village." },
+  { name: "Zwieselstein to Vent Valley Walk", desc: "Valley trail along the Venter Ache toward Vent." },
+  { name: "Timmelsjoch High Alpine Trail", desc: "Alpine trail near the Timmelsjoch pass road." },
+  { name: "Gurgler Alm to Gurgler Ferner", desc: "Walk from Obergurgl up toward the Gurgler glacier." },
+  { name: "Windachalm Circular Route", desc: "Moderate loop through alpine pasture above Sölden." },
+  { name: "Rotkogljoch Ridge Hike", desc: "Demanding ridge route with panoramic Ötztal views." },
+  { name: "Wilde Wasser Weg (Wild Water Trail)", desc: "Family-friendly trail following the Ötztaler Ache." },
+  { name: "Freilichtmuseum Nature Trail", desc: "Easy open-air museum walk right in Sölden village." },
+  { name: "Panoramaweg Hochsölden", desc: "Scenic balcony trail above Hochsölden with village views." },
+  { name: "Larstigtal Valley Trail", desc: "Quiet side-valley walk near Zwieselstein." },
+  { name: "Obergurgl to Schönwieshütte", desc: "Hut hike from Obergurgl, good for a lunch stop." },
+  { name: "Königstal High Valley Hike", desc: "Remote high valley trail, good for solitude and views." }
+];
+
+function renderHikeOfDay() {
+  const now = new Date();
+  const dayIndex = Math.floor(now.getTime() / 86400000);
+  const hike = HIKES[dayIndex % HIKES.length];
+  const query = encodeURIComponent(`${hike.name} Sölden`);
+  document.getElementById("hike-of-day").innerHTML = `
+    <div style="font-weight:600; margin-bottom:4px;">${hike.name}</div>
+    <div style="color:var(--muted); font-size:0.9rem; margin-bottom:8px;">${hike.desc}</div>
+    <a href="https://www.alltrails.com/search?q=${query}" target="_blank" rel="noopener">Find route on AllTrails →</a>
+  `;
+}
+renderHikeOfDay();
 
 const WMO = {
   0: ["☀️", "Clear sky"], 1: ["🌤️", "Mainly clear"], 2: ["⛅", "Partly cloudy"], 3: ["☁️", "Overcast"],
