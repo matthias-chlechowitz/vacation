@@ -141,13 +141,6 @@
 </section>
 
 <section>
-  <h2>🏃 Strava Hike Proposals</h2>
-  <div id="strava-hikes">Loading…</div>
-  <div id="strava-error"></div>
-  <div class="note">Your nearby Hike/Walk activities plus popular Strava segments (tagged "running" — Strava has no hiking category here) within ~20km of the starting point. Needs a Strava API app configured (see CLAUDE.md).</div>
-</section>
-
-<section>
   <h2>🚌 Bus Plans</h2>
   <ul class="link-list">
     <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener">VVT journey planner</a></li>
@@ -159,10 +152,6 @@
 const TRIP_START = new Date("2026-08-15T00:00:00");
 const TRIP_END = new Date("2026-08-27T00:00:00");
 const LAT = 46.9692377665258, LON = 11.009963531605568;
-
-const STRAVA_CLIENT_ID = "270943";       // fill in from strava.com/settings/api
-const STRAVA_CLIENT_SECRET = "3663caa33e2faec4cc7ad81c781dc51e00425019";   // exposed client-side — fine for a personal single-user tool
-const STRAVA_REFRESH_TOKEN = "28b09ed68554406af564d06d222d0c0aaeb4e951";   // from one-time OAuth authorize (scope: activity:read)
 
 function updateCountdown() {
   const now = new Date();
@@ -258,86 +247,6 @@ async function loadWeather() {
   }
 }
 loadWeather();
-
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
-async function getStravaAccessToken() {
-  const res = await fetch("https://www.strava.com/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: STRAVA_CLIENT_ID,
-      client_secret: STRAVA_CLIENT_SECRET,
-      refresh_token: STRAVA_REFRESH_TOKEN
-    })
-  });
-  if (!res.ok) throw new Error(`Strava auth HTTP ${res.status}`);
-  const data = await res.json();
-  return data.access_token;
-}
-
-async function loadStravaHikes() {
-  if (!STRAVA_CLIENT_ID || !STRAVA_CLIENT_SECRET || !STRAVA_REFRESH_TOKEN) {
-    document.getElementById("strava-hikes").textContent = "";
-    document.getElementById("strava-error").textContent = "Strava not configured yet — fill in STRAVA_CLIENT_ID/SECRET/REFRESH_TOKEN.";
-    return;
-  }
-  try {
-    const token = await getStravaAccessToken();
-    const authHeader = { Authorization: `Bearer ${token}` };
-
-    const actRes = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=50", { headers: authHeader });
-    if (!actRes.ok) throw new Error(`activities HTTP ${actRes.status}`);
-    const activities = await actRes.json();
-    const seen = new Set();
-    const nearbyHikes = activities
-      .filter(a => (a.type === "Hike" || a.type === "Walk") && Array.isArray(a.start_latlng) && a.start_latlng.length === 2)
-      .map(a => ({
-        name: a.name,
-        distanceKm: haversineKm(LAT, LON, a.start_latlng[0], a.start_latlng[1]),
-        sourceLabel: "📍 Your activity",
-        url: `https://www.strava.com/activities/${a.id}`
-      }))
-      .filter(h => h.distanceKm <= 20)
-      .filter(h => (seen.has(h.name) ? false : (seen.add(h.name), true)))
-      .sort((a, b) => a.distanceKm - b.distanceKm)
-      .slice(0, 5);
-
-    const bounds = [LAT - 0.05, LON - 0.08, LAT + 0.05, LON + 0.08].join(",");
-    const segRes = await fetch(`https://www.strava.com/api/v3/segments/explore?bounds=${bounds}&activity_type=running`, { headers: authHeader });
-    if (!segRes.ok) throw new Error(`segments HTTP ${segRes.status}`);
-    const segData = await segRes.json();
-    const nearbySegments = (segData.segments || []).map(s => ({
-      name: s.name,
-      distanceKm: haversineKm(LAT, LON, s.start_latlng[0], s.start_latlng[1]),
-      sourceLabel: "🔥 Popular segment (via running)",
-      url: `https://www.strava.com/segments/${s.id}`
-    }));
-
-    const proposals = [...nearbyHikes, ...nearbySegments];
-    if (!proposals.length) {
-      document.getElementById("strava-hikes").textContent = "No nearby Strava activities or segments found.";
-      return;
-    }
-    document.getElementById("strava-hikes").innerHTML = `
-      <ul class="link-list">
-        ${proposals.map(p => `<li>${p.sourceLabel} · ${p.distanceKm.toFixed(1)}km · <a href="${p.url}" target="_blank" rel="noopener">${p.name}</a></li>`).join("")}
-      </ul>
-    `;
-  } catch (err) {
-    document.getElementById("strava-hikes").textContent = "";
-    document.getElementById("strava-error").textContent = `Couldn't load Strava hikes: ${err.message}`;
-  }
-}
-loadStravaHikes();
 </script>
 
 </body>
