@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sölden Trip Tracker</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f7f9;
+    --card: #ffffff;
+    --text: #1a1d21;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --border: #e2e5e9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --card: #1e2226;
+      --text: #eceff1;
+      --muted: #9aa4af;
+      --accent: #60a5fa;
+      --border: #2c3136;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  header .dates { color: var(--muted); font-size: 0.95rem; }
+  #countdown {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  section h2 {
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+  }
+  #current-weather {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: 1rem;
+  }
+  #current-weather .temp { font-size: 1.8rem; font-weight: 700; }
+  .forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+  }
+  .day-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+  .day-card .dow { font-weight: 600; }
+  .day-card .icon { font-size: 1.6rem; margin: 4px 0; }
+  .day-card .hi { font-weight: 600; }
+  .day-card .lo { color: var(--muted); }
+  .day-card.trip-day { border-color: var(--accent); border-width: 2px; }
+  .link-list { list-style: none; padding: 0; margin: 0; }
+  .link-list li { margin-bottom: 8px; }
+  .link-list a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .link-list a:hover { text-decoration: underline; }
+  .note {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+  #weather-error {
+    color: #dc2626;
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏔️ Sölden, Tirol</h1>
+  <div class="dates">15.08.2026 – 27.08.2026</div>
+  <div id="countdown"></div>
+</header>
+
+<section>
+  <h2>☁️ Weather &amp; Forecast</h2>
+  <div id="current-weather">Loading current conditions…</div>
+  <div id="forecast" class="forecast-grid"></div>
+  <div id="weather-error"></div>
+  <div class="note">Live data from Open-Meteo. Forecast covers 16 days ahead; days beyond that aren't forecasted yet.</div>
+</section>
+
+<section>
+  <h2>🚡 Cablecar / Lift Status</h2>
+  <ul class="link-list">
+    <li><a href="https://www.soelden.com/en/live-information/status" target="_blank" rel="noopener">Live lift &amp; piste status (soelden.com)</a></li>
+    <li><a href="https://bergbahnen.soelden.com/en" target="_blank" rel="noopener">Bergbahnen Sölden</a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>🥾 Trail Status</h2>
+  <ul class="link-list">
+    <li><a href="https://www.soelden.com/en/activities/summer/bike-republic-soelden/live-info/trailstatus" target="_blank" rel="noopener">Bike trail status (Bike Republic Sölden)</a></li>
+    <li><a href="https://www.soelden.com/en/activities/summer/hiking-mountaineering/hiking-routes-tours" target="_blank" rel="noopener">Hiking routes &amp; tours</a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>🚌 Bus Plans</h2>
+  <ul class="link-list">
+    <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener">VVT journey planner</a></li>
+  </ul>
+  <div class="note">Relevant lines: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.</div>
+</section>
+
+<script>
+const TRIP_START = new Date("2026-08-15T00:00:00");
+const TRIP_END = new Date("2026-08-27T00:00:00");
+const LAT = 46.9678, LON = 10.9410;
+
+function updateCountdown() {
+  const now = new Date();
+  const el = document.getElementById("countdown");
+  const msPerDay = 86400000;
+  if (now < TRIP_START) {
+    const days = Math.ceil((TRIP_START - now) / msPerDay);
+    el.textContent = `${days} day${days === 1 ? "" : "s"} until departure`;
+  } else if (now <= TRIP_END) {
+    const day = Math.floor((now - TRIP_START) / msPerDay) + 1;
+    el.textContent = `Day ${day} of the trip`;
+  } else {
+    el.textContent = "Trip complete";
+  }
+}
+updateCountdown();
+
+const WMO = {
+  0: ["☀️", "Clear sky"], 1: ["🌤️", "Mainly clear"], 2: ["⛅", "Partly cloudy"], 3: ["☁️", "Overcast"],
+  45: ["🌫️", "Fog"], 48: ["🌫️", "Rime fog"],
+  51: ["🌦️", "Light drizzle"], 53: ["🌦️", "Drizzle"], 55: ["🌦️", "Dense drizzle"],
+  61: ["🌧️", "Light rain"], 63: ["🌧️", "Rain"], 65: ["🌧️", "Heavy rain"],
+  71: ["🌨️", "Light snow"], 73: ["🌨️", "Snow"], 75: ["❄️", "Heavy snow"],
+  80: ["🌦️", "Rain showers"], 81: ["🌧️", "Rain showers"], 82: ["⛈️", "Violent showers"],
+  95: ["⛈️", "Thunderstorm"], 96: ["⛈️", "Thunderstorm w/ hail"], 99: ["⛈️", "Severe thunderstorm"]
+};
+function wmoInfo(code) {
+  return WMO[code] || ["🌡️", "Unknown"];
+}
+
+async function loadWeather() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&current_weather=true&timezone=Europe%2FVienna&forecast_days=16`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const cw = data.current_weather;
+    const [icon, desc] = wmoInfo(cw.weathercode);
+    document.getElementById("current-weather").innerHTML =
+      `<span style="font-size:2rem">${icon}</span>
+       <div><span class="temp">${Math.round(cw.temperature)}°C</span><br>
+       <span>${desc} · wind ${Math.round(cw.windspeed)} km/h</span></div>`;
+
+    const grid = document.getElementById("forecast");
+    const days = data.daily.time;
+    grid.innerHTML = days.map((dateStr, i) => {
+      const date = new Date(dateStr + "T00:00:00");
+      const dow = date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "numeric" });
+      const [icon, desc] = wmoInfo(data.daily.weathercode[i]);
+      const hi = Math.round(data.daily.temperature_2m_max[i]);
+      const lo = Math.round(data.daily.temperature_2m_min[i]);
+      const isTripDay = date >= TRIP_START && date <= TRIP_END;
+      return `<div class="day-card${isTripDay ? " trip-day" : ""}" title="${desc}">
+        <div class="dow">${dow}</div>
+        <div class="icon">${icon}</div>
+        <div class="hi">${hi}°</div>
+        <div class="lo">${lo}°</div>
+      </div>`;
+    }).join("");
+  } catch (err) {
+    document.getElementById("weather-error").textContent = `Couldn't load weather: ${err.message}`;
+    document.getElementById("current-weather").textContent = "";
+  }
+}
+loadWeather();
+</script>
+
+</body>
+</html>
