@@ -18,10 +18,23 @@ Researched live data sources before building:
 - **Bus**: VVT (Verkehrsverbund Tirol) has a journey planner (fahrplan.vvt.at /
   vvt.at) but no public/documented API usable from a static site.
 
-Since the app is a static site with no backend, only Open-Meteo is integrated
-as real live data. Cablecar/trail/bus are **link-out cards** to the official
-live-status pages instead — decided against building a backend just to proxy
-scrape three pages for a personal vacation tool.
+Since the app is a static site with no backend, only Open-Meteo and Strava
+are integrated as real live data. Cablecar/trail/bus are **link-out cards**
+to the official live-status pages instead — decided against building a
+backend just to proxy scrape three pages for a personal vacation tool.
+
+- **Strava**: `GET /athlete/activities` (own logged Hike/Walk activities near
+  the starting point) + `GET /segments/explore` for nearby popular segments.
+  Strava's OAuth token exchange normally needs a server-side `client_secret`
+  — since there's no backend, `client_id`/`client_secret`/`refresh_token` are
+  hardcoded client-side instead (acceptable tradeoff for a personal
+  single-user tool; the refresh token is exchanged for a new 6h access token
+  on every page load). `segments/explore` has no "hiking" `activity_type` —
+  only `running`/`riding` — so `running` is used as the closest proxy for
+  trail segments. Note: Strava is restricting `segments/explore` to
+  Extended Access Tier apps from 2026-09-01 — after this trip ends
+  (2026-08-27), so re-check that endpoint's availability if reusing this
+  pattern later.
 
 ## Structure
 
@@ -40,6 +53,22 @@ no framework, no dependencies).
    actual trailhead, not just "Sölden" generally.
 6. **Bus plans**: link-out card → VVT journey planner, with the relevant line
    numbers noted (320, Skibus 44) since there's no way to prefill the planner.
+7. **Strava Hike Proposals**: fetches own Hike/Walk activities + nearby
+   segment-explore results on load, merges and lists them below the curated
+   Hike of the Day (kept as a fallback if Strava isn't configured or a call
+   fails).
+
+## Strava setup
+
+1. Create an API app at strava.com/settings/api → get `client_id` and
+   `client_secret`.
+2. One-time OAuth authorize with scope `activity:read` to obtain a
+   `refresh_token` (see Strava's "Getting Started" docs for the authorize
+   URL/redirect flow).
+3. Paste `client_id`, `client_secret`, `refresh_token` into the
+   `STRAVA_CLIENT_ID`/`STRAVA_CLIENT_SECRET`/`STRAVA_REFRESH_TOKEN` constants
+   in `index.html`. Left blank, the section just shows a "not configured"
+   message instead of failing.
 
 ## Key values
 
