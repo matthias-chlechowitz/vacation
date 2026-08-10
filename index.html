@@ -174,52 +174,79 @@
     color: #dc2626;
     font-size: 0.9rem;
   }
+  .lang-selector {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .lang-selector button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .lang-selector button:hover { border-color: var(--accent); }
+  .lang-selector button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
 </style>
 </head>
 <body>
 
 <header>
+  <div class="lang-selector" id="lang-selector">
+    <button data-lang="en">English</button>
+    <button data-lang="de">Deutsch</button>
+    <button data-lang="ru">Русский</button>
+  </div>
   <h1>🏔️ Sölden, Tirol</h1>
   <div class="dates">15.08.2026 – 27.08.2026</div>
   <div id="countdown"></div>
 </header>
 
 <section>
-  <h2>☁️ Weather &amp; Forecast</h2>
-  <div id="current-weather">Loading current conditions…</div>
+  <h2>☁️ <span data-i18n="weather.title"></span></h2>
+  <div id="current-weather" data-i18n="weather.loading">Loading current conditions…</div>
   <div id="forecast" class="forecast-grid"></div>
   <div id="weather-error"></div>
-  <div class="note">Live data from Open-Meteo. Forecast covers 16 days ahead; days beyond that aren't forecasted yet.</div>
+  <div class="note" data-i18n="weather.note"></div>
 </section>
 
 <section>
-  <h2>🚡 Cablecar / Lift Status</h2>
+  <h2>🚡 <span data-i18n="cablecar.title"></span></h2>
   <ul class="link-list">
-    <li><a href="https://www.soelden.com/en/live-information/status" target="_blank" rel="noopener">Live lift &amp; piste status (soelden.com)</a></li>
-    <li><a href="https://bergbahnen.soelden.com/en" target="_blank" rel="noopener">Bergbahnen Sölden</a></li>
+    <li><a href="https://www.soelden.com/en/live-information/status" target="_blank" rel="noopener" data-i18n="cablecar.link1"></a></li>
+    <li><a href="https://bergbahnen.soelden.com/en" target="_blank" rel="noopener" data-i18n="cablecar.link2"></a></li>
   </ul>
 </section>
 
 <section>
-  <h2>🥾 Trail Status</h2>
+  <h2>🥾 <span data-i18n="trail.title"></span></h2>
   <ul class="link-list">
-    <li><a href="https://www.soelden.com/en/activities/summer/bike-republic-soelden/live-info/trailstatus" target="_blank" rel="noopener">Bike trail status (Bike Republic Sölden)</a></li>
-    <li><a href="https://www.soelden.com/en/activities/summer/hiking-mountaineering/hiking-routes-tours" target="_blank" rel="noopener">Hiking routes &amp; tours</a></li>
+    <li><a href="https://www.soelden.com/en/activities/summer/bike-republic-soelden/live-info/trailstatus" target="_blank" rel="noopener" data-i18n="trail.link1"></a></li>
+    <li><a href="https://www.soelden.com/en/activities/summer/hiking-mountaineering/hiking-routes-tours" target="_blank" rel="noopener" data-i18n="trail.link2"></a></li>
   </ul>
 </section>
 
 <section>
-  <h2>🗺️ Hike of the Day</h2>
+  <h2>🗺️ <span data-i18n="hike.title"></span></h2>
   <div id="hike-of-day"></div>
-  <div class="note">Rotates daily. Link opens a search for the route so you can check current conditions/maps before heading out.</div>
+  <div class="note" data-i18n="hike.note"></div>
 </section>
 
 <section>
-  <h2>🚌 Bus Plans</h2>
+  <h2>🚌 <span data-i18n="bus.title"></span></h2>
   <ul class="link-list">
-    <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener">VVT journey planner</a></li>
+    <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener" data-i18n="bus.link1"></a></li>
   </ul>
-  <div class="note">Relevant lines: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.</div>
+  <div class="note" data-i18n="bus.note"></div>
 </section>
 
 <div class="modal-backdrop" id="weather-modal">
@@ -240,37 +267,180 @@ const TRIP_START = new Date("2026-08-15T00:00:00");
 const TRIP_END = new Date("2026-08-27T00:00:00");
 const LAT = 46.9692377665258, LON = 11.009963531605568;
 
+/* ---------- i18n ---------- */
+const LOCALE = { en: "en-GB", de: "de-DE", ru: "ru-RU" };
+
+const I18N = {
+  en: {
+    "doc.title": "Sölden Trip Tracker",
+    "countdown.until": (d) => `${d} day${d === 1 ? "" : "s"} until departure`,
+    "countdown.day": (d) => `Day ${d} of the trip`,
+    "countdown.done": "Trip complete",
+    "weather.title": "Weather & Forecast",
+    "weather.loading": "Loading current conditions…",
+    "weather.note": "Live data from Open-Meteo. Forecast covers 16 days ahead; days beyond that aren't forecasted yet.",
+    "weather.wind": "wind",
+    "weather.error": (m) => `Couldn't load weather: ${m}`,
+    "weather.clickHint": "click for details",
+    "cablecar.title": "Cablecar / Lift Status",
+    "cablecar.link1": "Live lift & piste status (soelden.com)",
+    "cablecar.link2": "Bergbahnen Sölden",
+    "trail.title": "Trail Status",
+    "trail.link1": "Bike trail status (Bike Republic Sölden)",
+    "trail.link2": "Hiking routes & tours",
+    "hike.title": "Hike of the Day",
+    "hike.note": "Rotates daily. Link opens a search for the route so you can check current conditions/maps before heading out.",
+    "hike.find": "Find route near starting point →",
+    "bus.title": "Bus Plans",
+    "bus.link1": "VVT journey planner",
+    "bus.note": "Relevant lines: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
+    "modal.hilo": "High / Low",
+    "modal.feels": "Feels like",
+    "modal.precip": "Precipitation",
+    "modal.rainChance": "Chance of rain",
+    "modal.maxWind": "Max wind",
+    "modal.gusts": "Wind gusts",
+    "modal.uv": "UV index",
+    "modal.daylight": "Daylight",
+    "modal.tripBadge": "🏔️ During your trip",
+    "modal.close": "Close"
+  },
+  de: {
+    "doc.title": "Sölden Reise-Tracker",
+    "countdown.until": (d) => `Noch ${d} Tag${d === 1 ? "" : "e"} bis zur Abreise`,
+    "countdown.day": (d) => `Tag ${d} der Reise`,
+    "countdown.done": "Reise beendet",
+    "weather.title": "Wetter & Vorhersage",
+    "weather.loading": "Aktuelle Bedingungen werden geladen…",
+    "weather.note": "Live-Daten von Open-Meteo. Die Vorhersage umfasst 16 Tage im Voraus; spätere Tage sind noch nicht vorhergesagt.",
+    "weather.wind": "Wind",
+    "weather.error": (m) => `Wetter konnte nicht geladen werden: ${m}`,
+    "weather.clickHint": "für Details klicken",
+    "cablecar.title": "Seilbahn / Liftstatus",
+    "cablecar.link1": "Live-Lift- & Pistenstatus (soelden.com)",
+    "cablecar.link2": "Bergbahnen Sölden",
+    "trail.title": "Trail-Status",
+    "trail.link1": "Bike-Trail-Status (Bike Republic Sölden)",
+    "trail.link2": "Wanderrouten & Touren",
+    "hike.title": "Wanderung des Tages",
+    "hike.note": "Wechselt täglich. Der Link öffnet eine Suche für die Route, damit du vor dem Aufbruch aktuelle Bedingungen/Karten prüfen kannst.",
+    "hike.find": "Route in der Nähe des Ausgangspunkts finden →",
+    "bus.title": "Buspläne",
+    "bus.link1": "VVT-Fahrplanauskunft",
+    "bus.note": "Relevante Linien: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
+    "modal.hilo": "Max. / Min.",
+    "modal.feels": "Gefühlt",
+    "modal.precip": "Niederschlag",
+    "modal.rainChance": "Regenwahrscheinlichkeit",
+    "modal.maxWind": "Max. Wind",
+    "modal.gusts": "Windböen",
+    "modal.uv": "UV-Index",
+    "modal.daylight": "Tageslicht",
+    "modal.tripBadge": "🏔️ Während deiner Reise",
+    "modal.close": "Schließen"
+  },
+  ru: {
+    "doc.title": "Трекер поездки в Зёльден",
+    "countdown.until": (d) => `${d} дн. до отъезда`,
+    "countdown.day": (d) => `День ${d} поездки`,
+    "countdown.done": "Поездка завершена",
+    "weather.title": "Погода и прогноз",
+    "weather.loading": "Загрузка текущих условий…",
+    "weather.note": "Данные в реальном времени от Open-Meteo. Прогноз охватывает 16 дней вперёд; более поздние дни ещё не прогнозируются.",
+    "weather.wind": "ветер",
+    "weather.error": (m) => `Не удалось загрузить погоду: ${m}`,
+    "weather.clickHint": "нажмите для подробностей",
+    "cablecar.title": "Канатные дороги / подъёмники",
+    "cablecar.link1": "Статус подъёмников и трасс (soelden.com)",
+    "cablecar.link2": "Bergbahnen Sölden",
+    "trail.title": "Статус трасс",
+    "trail.link1": "Статус велотрасс (Bike Republic Sölden)",
+    "trail.link2": "Пешие маршруты и туры",
+    "hike.title": "Поход дня",
+    "hike.note": "Меняется ежедневно. Ссылка открывает поиск маршрута, чтобы вы могли проверить текущие условия/карты перед выходом.",
+    "hike.find": "Найти маршрут рядом с точкой старта →",
+    "bus.title": "Расписание автобусов",
+    "bus.link1": "Планировщик поездок VVT",
+    "bus.note": "Актуальные маршруты: автобус 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
+    "modal.hilo": "Макс. / Мин.",
+    "modal.feels": "Ощущается как",
+    "modal.precip": "Осадки",
+    "modal.rainChance": "Вероятность дождя",
+    "modal.maxWind": "Макс. ветер",
+    "modal.gusts": "Порывы ветра",
+    "modal.uv": "УФ-индекс",
+    "modal.daylight": "Световой день",
+    "modal.tripBadge": "🏔️ Во время поездки",
+    "modal.close": "Закрыть"
+  }
+};
+
+let LANG = localStorage.getItem("lang") || "en";
+if (!I18N[LANG]) LANG = "en";
+
+function t(key, ...args) {
+  const val = (I18N[LANG] && I18N[LANG][key]) ?? (I18N.en[key] ?? key);
+  return typeof val === "function" ? val(...args) : val;
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = LANG;
+  document.title = t("doc.title");
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.getElementById("modal-close").setAttribute("aria-label", t("modal.close"));
+}
+
+function setLang(lang) {
+  if (!I18N[lang]) return;
+  LANG = lang;
+  localStorage.setItem("lang", lang);
+  document.querySelectorAll("#lang-selector button").forEach(b => {
+    b.classList.toggle("active", b.dataset.lang === lang);
+  });
+  applyStaticTranslations();
+  updateCountdown();
+  renderHikeOfDay();
+  renderWeather();
+}
+
+document.querySelectorAll("#lang-selector button").forEach(b => {
+  b.addEventListener("click", () => setLang(b.dataset.lang));
+});
+
+/* ---------- countdown ---------- */
 function updateCountdown() {
   const now = new Date();
   const el = document.getElementById("countdown");
   const msPerDay = 86400000;
   if (now < TRIP_START) {
     const days = Math.ceil((TRIP_START - now) / msPerDay);
-    el.textContent = `${days} day${days === 1 ? "" : "s"} until departure`;
+    el.textContent = t("countdown.until", days);
   } else if (now <= TRIP_END) {
     const day = Math.floor((now - TRIP_START) / msPerDay) + 1;
-    el.textContent = `Day ${day} of the trip`;
+    el.textContent = t("countdown.day", day);
   } else {
-    el.textContent = "Trip complete";
+    el.textContent = t("countdown.done");
   }
 }
-updateCountdown();
 
+/* ---------- hikes ---------- */
 const HIKES = [
-  { name: "Rettenbach Glacier Trail", desc: "High-altitude walk near the Rettenbach ski area, glacier views." },
-  { name: "Gaislachkogl Panorama Trail", desc: "Ridge walk from the Gaislachkogl summit station, 360° Alpine views." },
-  { name: "Stubenwildbach Waterfall Circuit", desc: "Easy circular walk past waterfalls near Sölden village." },
-  { name: "Zwieselstein to Vent Valley Walk", desc: "Valley trail along the Venter Ache toward Vent." },
-  { name: "Timmelsjoch High Alpine Trail", desc: "Alpine trail near the Timmelsjoch pass road." },
-  { name: "Gurgler Alm to Gurgler Ferner", desc: "Walk from Obergurgl up toward the Gurgler glacier." },
-  { name: "Windachalm Circular Route", desc: "Moderate loop through alpine pasture above Sölden." },
-  { name: "Rotkogljoch Ridge Hike", desc: "Demanding ridge route with panoramic Ötztal views." },
-  { name: "Wilde Wasser Weg (Wild Water Trail)", desc: "Family-friendly trail following the Ötztaler Ache." },
-  { name: "Freilichtmuseum Nature Trail", desc: "Easy open-air museum walk right in Sölden village." },
-  { name: "Panoramaweg Hochsölden", desc: "Scenic balcony trail above Hochsölden with village views." },
-  { name: "Larstigtal Valley Trail", desc: "Quiet side-valley walk near Zwieselstein." },
-  { name: "Obergurgl to Schönwieshütte", desc: "Hut hike from Obergurgl, good for a lunch stop." },
-  { name: "Königstal High Valley Hike", desc: "Remote high valley trail, good for solitude and views." }
+  { name: "Rettenbach Glacier Trail", desc: { en: "High-altitude walk near the Rettenbach ski area, glacier views.", de: "Hochgebirgswanderung nahe dem Skigebiet Rettenbach mit Gletscherblick.", ru: "Высокогорная прогулка рядом с зоной катания Rettenbach, виды на ледник." } },
+  { name: "Gaislachkogl Panorama Trail", desc: { en: "Ridge walk from the Gaislachkogl summit station, 360° Alpine views.", de: "Gratwanderung von der Gipfelstation Gaislachkogl, 360°-Alpenblick.", ru: "Гребневая тропа от вершинной станции Gaislachkogl, панорама Альп на 360°." } },
+  { name: "Stubenwildbach Waterfall Circuit", desc: { en: "Easy circular walk past waterfalls near Sölden village.", de: "Leichte Rundwanderung an Wasserfällen nahe dem Dorf Sölden.", ru: "Лёгкий круговой маршрут мимо водопадов рядом с посёлком Зёльден." } },
+  { name: "Zwieselstein to Vent Valley Walk", desc: { en: "Valley trail along the Venter Ache toward Vent.", de: "Talwanderung entlang der Venter Ache Richtung Vent.", ru: "Долинная тропа вдоль реки Venter Ache в сторону Vent." } },
+  { name: "Timmelsjoch High Alpine Trail", desc: { en: "Alpine trail near the Timmelsjoch pass road.", de: "Alpiner Weg nahe der Timmelsjoch-Passstraße.", ru: "Альпийская тропа рядом с дорогой перевала Timmelsjoch." } },
+  { name: "Gurgler Alm to Gurgler Ferner", desc: { en: "Walk from Obergurgl up toward the Gurgler glacier.", de: "Wanderung von Obergurgl hinauf zum Gurgler Ferner.", ru: "Прогулка из Obergurgl вверх к леднику Gurgler Ferner." } },
+  { name: "Windachalm Circular Route", desc: { en: "Moderate loop through alpine pasture above Sölden.", de: "Mittelschwere Runde über die Almwiesen oberhalb von Sölden.", ru: "Умеренный кольцевой маршрут по альпийским лугам над Зёльденом." } },
+  { name: "Rotkogljoch Ridge Hike", desc: { en: "Demanding ridge route with panoramic Ötztal views.", de: "Anspruchsvolle Gratroute mit Panoramablick ins Ötztal.", ru: "Сложный гребневой маршрут с панорамой долины Ötztal." } },
+  { name: "Wilde Wasser Weg (Wild Water Trail)", desc: { en: "Family-friendly trail following the Ötztaler Ache.", de: "Familienfreundlicher Weg entlang der Ötztaler Ache.", ru: "Семейный маршрут вдоль реки Ötztaler Ache." } },
+  { name: "Freilichtmuseum Nature Trail", desc: { en: "Easy open-air museum walk right in Sölden village.", de: "Leichter Rundgang durchs Freilichtmuseum direkt in Sölden.", ru: "Лёгкая прогулка по музею под открытым небом прямо в Зёльдене." } },
+  { name: "Panoramaweg Hochsölden", desc: { en: "Scenic balcony trail above Hochsölden with village views.", de: "Aussichtsreicher Höhenweg oberhalb von Hochsölden mit Dorfblick.", ru: "Живописная балконная тропа над Hochsölden с видом на посёлок." } },
+  { name: "Larstigtal Valley Trail", desc: { en: "Quiet side-valley walk near Zwieselstein.", de: "Ruhige Seitental-Wanderung nahe Zwieselstein.", ru: "Спокойная прогулка по боковой долине рядом с Zwieselstein." } },
+  { name: "Obergurgl to Schönwieshütte", desc: { en: "Hut hike from Obergurgl, good for a lunch stop.", de: "Hüttenwanderung von Obergurgl, ideal für eine Mittagsrast.", ru: "Поход к хижине из Obergurgl, удобно для обеда." } },
+  { name: "Königstal High Valley Hike", desc: { en: "Remote high valley trail, good for solitude and views.", de: "Abgelegene Hochtal-Wanderung, ideal für Ruhe und Ausblicke.", ru: "Уединённый маршрут по высокогорной долине, тишина и виды." } }
 ];
 
 function renderHikeOfDay() {
@@ -279,23 +449,70 @@ function renderHikeOfDay() {
   const hike = HIKES[dayIndex % HIKES.length];
   document.getElementById("hike-of-day").innerHTML = `
     <div style="font-weight:600; margin-bottom:4px;">${hike.name}</div>
-    <div style="color:var(--muted); font-size:0.9rem; margin-bottom:8px;">${hike.desc}</div>
-    <a href="https://www.alltrails.com/explore?b_tl_lat=${LAT+0.05}&b_tl_lng=${LON-0.08}&b_br_lat=${LAT-0.05}&b_br_lng=${LON+0.08}" target="_blank" rel="noopener">Find route near starting point →</a>
+    <div style="color:var(--muted); font-size:0.9rem; margin-bottom:8px;">${hike.desc[LANG] || hike.desc.en}</div>
+    <a href="https://www.alltrails.com/explore?b_tl_lat=${LAT+0.05}&b_tl_lng=${LON-0.08}&b_br_lat=${LAT-0.05}&b_br_lng=${LON+0.08}" target="_blank" rel="noopener">${t("hike.find")}</a>
   `;
 }
-renderHikeOfDay();
 
-const WMO = {
-  0: ["☀️", "Clear sky"], 1: ["🌤️", "Mainly clear"], 2: ["⛅", "Partly cloudy"], 3: ["☁️", "Overcast"],
-  45: ["🌫️", "Fog"], 48: ["🌫️", "Rime fog"],
-  51: ["🌦️", "Light drizzle"], 53: ["🌦️", "Drizzle"], 55: ["🌦️", "Dense drizzle"],
-  61: ["🌧️", "Light rain"], 63: ["🌧️", "Rain"], 65: ["🌧️", "Heavy rain"],
-  71: ["🌨️", "Light snow"], 73: ["🌨️", "Snow"], 75: ["❄️", "Heavy snow"],
-  80: ["🌦️", "Rain showers"], 81: ["🌧️", "Rain showers"], 82: ["⛈️", "Violent showers"],
-  95: ["⛈️", "Thunderstorm"], 96: ["⛈️", "Thunderstorm w/ hail"], 99: ["⛈️", "Severe thunderstorm"]
+/* ---------- WMO codes ---------- */
+const WMO_ICON = {
+  0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
+  45: "🌫️", 48: "🌫️",
+  51: "🌦️", 53: "🌦️", 55: "🌦️",
+  61: "🌧️", 63: "🌧️", 65: "🌧️",
+  71: "🌨️", 73: "🌨️", 75: "❄️",
+  80: "🌦️", 81: "🌧️", 82: "⛈️",
+  95: "⛈️", 96: "⛈️", 99: "⛈️"
+};
+const WMO_DESC = {
+  en: { 0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle", 55: "Dense drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Rain showers", 81: "Rain showers", 82: "Violent showers", 95: "Thunderstorm", 96: "Thunderstorm w/ hail", 99: "Severe thunderstorm" },
+  de: { 0: "Klarer Himmel", 1: "Überwiegend klar", 2: "Teils bewölkt", 3: "Bedeckt", 45: "Nebel", 48: "Reifnebel", 51: "Leichter Niesel", 53: "Niesel", 55: "Dichter Niesel", 61: "Leichter Regen", 63: "Regen", 65: "Starker Regen", 71: "Leichter Schnee", 73: "Schnee", 75: "Starker Schnee", 80: "Regenschauer", 81: "Regenschauer", 82: "Heftige Schauer", 95: "Gewitter", 96: "Gewitter mit Hagel", 99: "Schweres Gewitter" },
+  ru: { 0: "Ясно", 1: "Преимущественно ясно", 2: "Переменная облачность", 3: "Пасмурно", 45: "Туман", 48: "Изморозь", 51: "Слабая морось", 53: "Морось", 55: "Сильная морось", 61: "Слабый дождь", 63: "Дождь", 65: "Сильный дождь", 71: "Слабый снег", 73: "Снег", 75: "Сильный снег", 80: "Ливни", 81: "Ливни", 82: "Сильные ливни", 95: "Гроза", 96: "Гроза с градом", 99: "Сильная гроза" }
 };
 function wmoInfo(code) {
-  return WMO[code] || ["🌡️", "Unknown"];
+  const icon = WMO_ICON[code] || "🌡️";
+  const desc = (WMO_DESC[LANG] && WMO_DESC[LANG][code]) || WMO_DESC.en[code] || "—";
+  return [icon, desc];
+}
+
+/* ---------- weather ---------- */
+let weatherData = null;
+
+function renderWeather() {
+  if (!weatherData) return;
+  const data = weatherData;
+
+  const cw = data.current_weather;
+  const [cIcon, cDesc] = wmoInfo(cw.weathercode);
+  document.getElementById("current-weather").innerHTML =
+    `<span style="font-size:2rem">${cIcon}</span>
+     <div><span class="temp">${Math.round(cw.temperature)}°C</span><br>
+     <span>${cDesc} · ${t("weather.wind")} ${Math.round(cw.windspeed)} km/h</span></div>`;
+
+  const grid = document.getElementById("forecast");
+  const days = data.daily.time;
+  grid.innerHTML = days.map((dateStr, i) => {
+    const date = new Date(dateStr + "T00:00:00");
+    const dow = date.toLocaleDateString(LOCALE[LANG], { weekday: "short", day: "numeric", month: "numeric" });
+    const [icon, desc] = wmoInfo(data.daily.weathercode[i]);
+    const hi = Math.round(data.daily.temperature_2m_max[i]);
+    const lo = Math.round(data.daily.temperature_2m_min[i]);
+    const isTripDay = date >= TRIP_START && date <= TRIP_END;
+    return `<div class="day-card${isTripDay ? " trip-day" : ""}" title="${desc} — ${t("weather.clickHint")}" role="button" tabindex="0" data-day="${i}">
+      <div class="dow">${dow}</div>
+      <div class="icon">${icon}</div>
+      <div class="hi">${hi}°</div>
+      <div class="lo">${lo}°</div>
+    </div>`;
+  }).join("");
+
+  grid.querySelectorAll(".day-card").forEach(card => {
+    const open = () => showDayModal(data.daily, Number(card.dataset.day));
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+  });
 }
 
 async function loadWeather() {
@@ -303,45 +520,13 @@ async function loadWeather() {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    const cw = data.current_weather;
-    const [icon, desc] = wmoInfo(cw.weathercode);
-    document.getElementById("current-weather").innerHTML =
-      `<span style="font-size:2rem">${icon}</span>
-       <div><span class="temp">${Math.round(cw.temperature)}°C</span><br>
-       <span>${desc} · wind ${Math.round(cw.windspeed)} km/h</span></div>`;
-
-    const grid = document.getElementById("forecast");
-    const days = data.daily.time;
-    grid.innerHTML = days.map((dateStr, i) => {
-      const date = new Date(dateStr + "T00:00:00");
-      const dow = date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "numeric" });
-      const [icon, desc] = wmoInfo(data.daily.weathercode[i]);
-      const hi = Math.round(data.daily.temperature_2m_max[i]);
-      const lo = Math.round(data.daily.temperature_2m_min[i]);
-      const isTripDay = date >= TRIP_START && date <= TRIP_END;
-      return `<div class="day-card${isTripDay ? " trip-day" : ""}" title="${desc} — click for details" role="button" tabindex="0" data-day="${i}">
-        <div class="dow">${dow}</div>
-        <div class="icon">${icon}</div>
-        <div class="hi">${hi}°</div>
-        <div class="lo">${lo}°</div>
-      </div>`;
-    }).join("");
-
-    grid.querySelectorAll(".day-card").forEach(card => {
-      const open = () => showDayModal(data.daily, Number(card.dataset.day));
-      card.addEventListener("click", open);
-      card.addEventListener("keydown", e => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
-      });
-    });
+    weatherData = await res.json();
+    renderWeather();
   } catch (err) {
-    document.getElementById("weather-error").textContent = `Couldn't load weather: ${err.message}`;
+    document.getElementById("weather-error").textContent = t("weather.error", err.message);
     document.getElementById("current-weather").textContent = "";
   }
 }
-loadWeather();
 
 const modal = document.getElementById("weather-modal");
 function closeModal() { modal.classList.remove("open"); }
@@ -350,7 +535,7 @@ modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
 function fmtTime(iso) {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(LOCALE[LANG], { hour: "2-digit", minute: "2-digit" });
 }
 const WIND_DIRS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 function windDir(deg) {
@@ -364,7 +549,7 @@ function showDayModal(daily, i) {
   const isTripDay = date >= TRIP_START && date <= TRIP_END;
 
   document.getElementById("modal-title").textContent =
-    date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    date.toLocaleDateString(LOCALE[LANG], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   document.getElementById("modal-subtitle").textContent = desc;
 
   const hi = Math.round(daily.temperature_2m_max[i]);
@@ -373,14 +558,14 @@ function showDayModal(daily, i) {
   const feelsLo = Math.round(daily.apparent_temperature_min[i]);
 
   const items = [
-    ["High / Low", `${hi}° / ${lo}°`],
-    ["Feels like", `${feelsHi}° / ${feelsLo}°`],
-    ["Precipitation", `${daily.precipitation_sum[i]} mm`],
-    ["Chance of rain", daily.precipitation_probability_max[i] != null ? `${daily.precipitation_probability_max[i]}%` : "–"],
-    ["Max wind", `${Math.round(daily.windspeed_10m_max[i])} km/h ${windDir(daily.winddirection_10m_dominant[i])}`],
-    ["Wind gusts", `${Math.round(daily.windgusts_10m_max[i])} km/h`],
-    ["UV index", daily.uv_index_max[i] != null ? Math.round(daily.uv_index_max[i]) : "–"],
-    ["Daylight", `${fmtTime(daily.sunrise[i])} – ${fmtTime(daily.sunset[i])}`],
+    [t("modal.hilo"), `${hi}° / ${lo}°`],
+    [t("modal.feels"), `${feelsHi}° / ${feelsLo}°`],
+    [t("modal.precip"), `${daily.precipitation_sum[i]} mm`],
+    [t("modal.rainChance"), daily.precipitation_probability_max[i] != null ? `${daily.precipitation_probability_max[i]}%` : "–"],
+    [t("modal.maxWind"), `${Math.round(daily.windspeed_10m_max[i])} km/h ${windDir(daily.winddirection_10m_dominant[i])}`],
+    [t("modal.gusts"), `${Math.round(daily.windgusts_10m_max[i])} km/h`],
+    [t("modal.uv"), daily.uv_index_max[i] != null ? Math.round(daily.uv_index_max[i]) : "–"],
+    [t("modal.daylight"), `${fmtTime(daily.sunrise[i])} – ${fmtTime(daily.sunset[i])}`],
   ];
 
   document.getElementById("modal-body").innerHTML = `
@@ -398,11 +583,20 @@ function showDayModal(daily, i) {
           <div class="value">${value}</div>
         </div>`).join("")}
     </div>
-    ${isTripDay ? `<div class="trip-badge">🏔️ During your trip</div>` : ""}
+    ${isTripDay ? `<div class="trip-badge">${t("modal.tripBadge")}</div>` : ""}
   `;
 
   modal.classList.add("open");
 }
+
+/* ---------- init ---------- */
+document.querySelectorAll("#lang-selector button").forEach(b => {
+  b.classList.toggle("active", b.dataset.lang === LANG);
+});
+applyStaticTranslations();
+updateCountdown();
+renderHikeOfDay();
+loadWeather();
 </script>
 
 </body>
