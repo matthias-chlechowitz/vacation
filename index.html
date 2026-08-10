@@ -83,6 +83,80 @@
   .day-card .hi { font-weight: 600; }
   .day-card .lo { color: var(--muted); }
   .day-card.trip-day { border-color: var(--accent); border-width: 2px; }
+  .day-card { cursor: pointer; transition: transform 0.08s ease, box-shadow 0.08s ease; }
+  .day-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .modal-header .title { font-size: 1.15rem; font-weight: 700; }
+  .modal-header .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal .hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .modal .hero .big-icon { font-size: 3rem; }
+  .modal .hero .big-temp { font-size: 1.6rem; font-weight: 700; }
+  .modal .hero .cond { color: var(--muted); }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .detail-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .detail-item .label { color: var(--muted); font-size: 0.78rem; }
+  .detail-item .value { font-weight: 600; font-size: 1rem; margin-top: 2px; }
+  .modal .trip-badge {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
   .link-list { list-style: none; padding: 0; margin: 0; }
   .link-list li { margin-bottom: 8px; }
   .link-list a {
@@ -148,6 +222,19 @@
   <div class="note">Relevant lines: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.</div>
 </section>
 
+<div class="modal-backdrop" id="weather-modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <div class="title" id="modal-title"></div>
+        <div class="subtitle" id="modal-subtitle"></div>
+      </div>
+      <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
 <script>
 const TRIP_START = new Date("2026-08-15T00:00:00");
 const TRIP_END = new Date("2026-08-27T00:00:00");
@@ -212,7 +299,7 @@ function wmoInfo(code) {
 }
 
 async function loadWeather() {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&current_weather=true&timezone=Europe%2FVienna&forecast_days=16`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant,sunrise,sunset,uv_index_max&current_weather=true&timezone=Europe%2FVienna&forecast_days=16`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -234,19 +321,88 @@ async function loadWeather() {
       const hi = Math.round(data.daily.temperature_2m_max[i]);
       const lo = Math.round(data.daily.temperature_2m_min[i]);
       const isTripDay = date >= TRIP_START && date <= TRIP_END;
-      return `<div class="day-card${isTripDay ? " trip-day" : ""}" title="${desc}">
+      return `<div class="day-card${isTripDay ? " trip-day" : ""}" title="${desc} — click for details" role="button" tabindex="0" data-day="${i}">
         <div class="dow">${dow}</div>
         <div class="icon">${icon}</div>
         <div class="hi">${hi}°</div>
         <div class="lo">${lo}°</div>
       </div>`;
     }).join("");
+
+    grid.querySelectorAll(".day-card").forEach(card => {
+      const open = () => showDayModal(data.daily, Number(card.dataset.day));
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      });
+    });
   } catch (err) {
     document.getElementById("weather-error").textContent = `Couldn't load weather: ${err.message}`;
     document.getElementById("current-weather").textContent = "";
   }
 }
 loadWeather();
+
+const modal = document.getElementById("weather-modal");
+function closeModal() { modal.classList.remove("open"); }
+document.getElementById("modal-close").addEventListener("click", closeModal);
+modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+const WIND_DIRS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+function windDir(deg) {
+  if (deg == null) return "–";
+  return WIND_DIRS[Math.round(deg / 22.5) % 16];
+}
+
+function showDayModal(daily, i) {
+  const date = new Date(daily.time[i] + "T00:00:00");
+  const [icon, desc] = wmoInfo(daily.weathercode[i]);
+  const isTripDay = date >= TRIP_START && date <= TRIP_END;
+
+  document.getElementById("modal-title").textContent =
+    date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  document.getElementById("modal-subtitle").textContent = desc;
+
+  const hi = Math.round(daily.temperature_2m_max[i]);
+  const lo = Math.round(daily.temperature_2m_min[i]);
+  const feelsHi = Math.round(daily.apparent_temperature_max[i]);
+  const feelsLo = Math.round(daily.apparent_temperature_min[i]);
+
+  const items = [
+    ["High / Low", `${hi}° / ${lo}°`],
+    ["Feels like", `${feelsHi}° / ${feelsLo}°`],
+    ["Precipitation", `${daily.precipitation_sum[i]} mm`],
+    ["Chance of rain", daily.precipitation_probability_max[i] != null ? `${daily.precipitation_probability_max[i]}%` : "–"],
+    ["Max wind", `${Math.round(daily.windspeed_10m_max[i])} km/h ${windDir(daily.winddirection_10m_dominant[i])}`],
+    ["Wind gusts", `${Math.round(daily.windgusts_10m_max[i])} km/h`],
+    ["UV index", daily.uv_index_max[i] != null ? Math.round(daily.uv_index_max[i]) : "–"],
+    ["Daylight", `${fmtTime(daily.sunrise[i])} – ${fmtTime(daily.sunset[i])}`],
+  ];
+
+  document.getElementById("modal-body").innerHTML = `
+    <div class="hero">
+      <div class="big-icon">${icon}</div>
+      <div>
+        <div class="big-temp">${hi}° / ${lo}°</div>
+        <div class="cond">${desc}</div>
+      </div>
+    </div>
+    <div class="detail-grid">
+      ${items.map(([label, value]) => `
+        <div class="detail-item">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+        </div>`).join("")}
+    </div>
+    ${isTripDay ? `<div class="trip-badge">🏔️ During your trip</div>` : ""}
+  `;
+
+  modal.classList.add("open");
+}
 </script>
 
 </body>
