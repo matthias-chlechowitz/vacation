@@ -196,6 +196,54 @@
     border-color: var(--accent);
     color: #fff;
   }
+  .strava-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .sport-toggle { display: flex; gap: 6px; }
+  .sport-toggle button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .sport-toggle button:hover { border-color: #fc4c02; }
+  .sport-toggle button.active {
+    background: #fc4c02;
+    border-color: #fc4c02;
+    color: #fff;
+  }
+  .strava-btn {
+    background: #fc4c02;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .strava-btn:hover { background: #e04402; }
+  .strava-btn:disabled { opacity: 0.6; cursor: default; }
+  .segment-list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .segment-list li {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .segment-list a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .segment-list a:hover { text-decoration: underline; }
+  .segment-list .seg-meta { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+  #strava-results .strava-error { color: #dc2626; font-size: 0.9rem; }
 </style>
 </head>
 <body>
@@ -242,6 +290,19 @@
 </section>
 
 <section>
+  <h2>🟠 <span data-i18n="strava.title"></span></h2>
+  <div class="strava-controls">
+    <div class="sport-toggle" id="strava-sport-toggle">
+      <button data-sport="running" class="active" data-i18n="strava.sportFoot"></button>
+      <button data-sport="riding" data-i18n="strava.sportBike"></button>
+    </div>
+    <button id="strava-connect" class="strava-btn"></button>
+  </div>
+  <div id="strava-results"></div>
+  <div class="note" data-i18n="strava.note"></div>
+</section>
+
+<section>
   <h2>🚌 <span data-i18n="bus.title"></span></h2>
   <ul class="link-list">
     <li><a href="https://www.vvt.at/ihre-fahrt/verbindung-suchen" target="_blank" rel="noopener" data-i18n="bus.link1"></a></li>
@@ -267,6 +328,15 @@ const TRIP_START = new Date("2026-08-15T00:00:00");
 const TRIP_END = new Date("2026-08-27T00:00:00");
 const LAT = 46.9692377665258, LON = 11.009963531605568;
 
+/* ---------- Strava config (non-secret) ----------
+   Fill these in after creating a Strava API app and deploying the Vercel proxy:
+   - STRAVA_CLIENT_ID: your Strava application's numeric Client ID.
+   - STRAVA_PROXY_BASE: base URL of the deployed Vercel proxy, no trailing slash,
+     e.g. "https://your-project.vercel.app". The proxy holds the client_secret. */
+const STRAVA_CLIENT_ID = "";
+const STRAVA_PROXY_BASE = "";
+const STRAVA_SCOPE = "read";
+
 /* ---------- i18n ---------- */
 const LOCALE = { en: "en-GB", de: "de-DE", ru: "ru-RU" };
 
@@ -291,6 +361,21 @@ const I18N = {
     "hike.title": "Hike of the Day",
     "hike.note": "Rotates daily. Link opens a search for the route so you can check current conditions/maps before heading out.",
     "hike.find": "Find route near starting point →",
+    "strava.title": "Strava — Nearby Segments",
+    "strava.note": "Popular Strava segments near the trailhead. \"Foot\" and \"Bike\" map to Strava's running/riding segment data (Strava has no hiking-specific segments). Requires connecting your Strava account.",
+    "strava.connect": "Connect with Strava",
+    "strava.disconnect": "Disconnect",
+    "strava.sportFoot": "🥾 Foot",
+    "strava.sportBike": "🚴 Bike",
+    "strava.loading": "Loading segments…",
+    "strava.empty": "No popular segments found in this area.",
+    "strava.error": (m) => `Couldn't load Strava segments: ${m}`,
+    "strava.connectFirst": "Connect your Strava account to see nearby segments.",
+    "strava.authError": (m) => `Strava authorization failed: ${m}`,
+    "strava.notConfigured": "Strava integration isn't configured yet (missing Client ID / proxy URL).",
+    "strava.distance": "Distance",
+    "strava.grade": "Avg grade",
+    "strava.climb": "Climb cat.",
     "bus.title": "Bus Plans",
     "bus.link1": "VVT journey planner",
     "bus.note": "Relevant lines: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
@@ -325,6 +410,21 @@ const I18N = {
     "hike.title": "Wanderung des Tages",
     "hike.note": "Wechselt täglich. Der Link öffnet eine Suche für die Route, damit du vor dem Aufbruch aktuelle Bedingungen/Karten prüfen kannst.",
     "hike.find": "Route in der Nähe des Ausgangspunkts finden →",
+    "strava.title": "Strava — Segmente in der Nähe",
+    "strava.note": "Beliebte Strava-Segmente nahe dem Ausgangspunkt. \"Zu Fuß\" und \"Rad\" nutzen Stravas Lauf-/Rad-Segmentdaten (Strava hat keine wanderspezifischen Segmente). Erfordert die Verbindung deines Strava-Kontos.",
+    "strava.connect": "Mit Strava verbinden",
+    "strava.disconnect": "Trennen",
+    "strava.sportFoot": "🥾 Zu Fuß",
+    "strava.sportBike": "🚴 Rad",
+    "strava.loading": "Segmente werden geladen…",
+    "strava.empty": "Keine beliebten Segmente in diesem Gebiet gefunden.",
+    "strava.error": (m) => `Strava-Segmente konnten nicht geladen werden: ${m}`,
+    "strava.connectFirst": "Verbinde dein Strava-Konto, um Segmente in der Nähe zu sehen.",
+    "strava.authError": (m) => `Strava-Autorisierung fehlgeschlagen: ${m}`,
+    "strava.notConfigured": "Strava-Integration ist noch nicht konfiguriert (Client-ID / Proxy-URL fehlt).",
+    "strava.distance": "Distanz",
+    "strava.grade": "Ø Steigung",
+    "strava.climb": "Anstiegskat.",
     "bus.title": "Buspläne",
     "bus.link1": "VVT-Fahrplanauskunft",
     "bus.note": "Relevante Linien: Bus 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
@@ -359,6 +459,21 @@ const I18N = {
     "hike.title": "Поход дня",
     "hike.note": "Меняется ежедневно. Ссылка открывает поиск маршрута, чтобы вы могли проверить текущие условия/карты перед выходом.",
     "hike.find": "Найти маршрут рядом с точкой старта →",
+    "strava.title": "Strava — сегменты поблизости",
+    "strava.note": "Популярные сегменты Strava рядом с точкой старта. «Пешком» и «Вело» используют беговые/велосипедные сегменты Strava (у Strava нет отдельных пеших сегментов). Требуется подключение аккаунта Strava.",
+    "strava.connect": "Подключить Strava",
+    "strava.disconnect": "Отключить",
+    "strava.sportFoot": "🥾 Пешком",
+    "strava.sportBike": "🚴 Вело",
+    "strava.loading": "Загрузка сегментов…",
+    "strava.empty": "В этой области популярных сегментов не найдено.",
+    "strava.error": (m) => `Не удалось загрузить сегменты Strava: ${m}`,
+    "strava.connectFirst": "Подключите аккаунт Strava, чтобы увидеть сегменты поблизости.",
+    "strava.authError": (m) => `Ошибка авторизации Strava: ${m}`,
+    "strava.notConfigured": "Интеграция Strava ещё не настроена (нет Client ID / URL прокси).",
+    "strava.distance": "Дистанция",
+    "strava.grade": "Ср. уклон",
+    "strava.climb": "Кат. подъёма",
     "bus.title": "Расписание автобусов",
     "bus.link1": "Планировщик поездок VVT",
     "bus.note": "Актуальные маршруты: автобус 320 Imst – Ötztal Bf – Sölden – Zwieselstein – Obergurgl; Skibus 44 Längenfeld – Sölden.",
@@ -403,6 +518,10 @@ function setLang(lang) {
   updateCountdown();
   renderHikeOfDay();
   renderWeather();
+  if (typeof renderStravaConnectButton === "function") {
+    renderStravaConnectButton();
+    loadStravaSegments();
+  }
 }
 
 document.querySelectorAll("#lang-selector button").forEach(b => {
@@ -589,6 +708,187 @@ function showDayModal(daily, i) {
   modal.classList.add("open");
 }
 
+/* ---------- Strava ---------- */
+const STRAVA_TOKENS_KEY = "strava_tokens";
+let stravaSport = localStorage.getItem("strava_sport") || "running";
+
+function stravaConfigured() {
+  return Boolean(STRAVA_CLIENT_ID && STRAVA_PROXY_BASE);
+}
+function getStravaTokens() {
+  try { return JSON.parse(localStorage.getItem(STRAVA_TOKENS_KEY)) || null; }
+  catch { return null; }
+}
+function setStravaTokens(tok) {
+  if (tok) localStorage.setItem(STRAVA_TOKENS_KEY, JSON.stringify(tok));
+  else localStorage.removeItem(STRAVA_TOKENS_KEY);
+}
+function stravaConnected() {
+  return Boolean(getStravaTokens()?.access_token);
+}
+
+function stravaRedirectUri() {
+  // Redirect back to this page without any existing query/hash.
+  return location.origin + location.pathname;
+}
+
+function beginStravaAuth() {
+  const url = new URL("https://www.strava.com/oauth/authorize");
+  url.searchParams.set("client_id", STRAVA_CLIENT_ID);
+  url.searchParams.set("redirect_uri", stravaRedirectUri());
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", STRAVA_SCOPE);
+  url.searchParams.set("approval_prompt", "auto");
+  location.href = url.toString();
+}
+
+async function exchangeStravaCode(code) {
+  const res = await fetch(`${STRAVA_PROXY_BASE}/api/strava-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  setStravaTokens(data);
+  return data;
+}
+
+async function refreshStravaToken() {
+  const tok = getStravaTokens();
+  if (!tok?.refresh_token) throw new Error("No refresh token");
+  const res = await fetch(`${STRAVA_PROXY_BASE}/api/strava-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: tok.refresh_token }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  setStravaTokens(data);
+  return data;
+}
+
+async function getValidStravaToken() {
+  let tok = getStravaTokens();
+  if (!tok) throw new Error("Not connected");
+  const now = Math.floor(Date.now() / 1000);
+  // Refresh if expired or expiring within 5 minutes.
+  if (!tok.expires_at || tok.expires_at - now < 300) {
+    tok = await refreshStravaToken();
+  }
+  return tok.access_token;
+}
+
+function stravaBounds() {
+  // Same box as the AllTrails link-out, formatted as sw_lat,sw_lng,ne_lat,ne_lng.
+  const swLat = LAT - 0.05, swLng = LON - 0.08;
+  const neLat = LAT + 0.05, neLng = LON + 0.08;
+  return `${swLat},${swLng},${neLat},${neLng}`;
+}
+
+async function loadStravaSegments() {
+  const box = document.getElementById("strava-results");
+  if (!stravaConfigured()) {
+    box.innerHTML = `<div class="note">${t("strava.notConfigured")}</div>`;
+    return;
+  }
+  if (!stravaConnected()) {
+    box.innerHTML = `<div class="note">${t("strava.connectFirst")}</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="note">${t("strava.loading")}</div>`;
+  try {
+    const token = await getValidStravaToken();
+    const url = `${STRAVA_PROXY_BASE}/api/strava-segments?bounds=${encodeURIComponent(stravaBounds())}&activity_type=${stravaSport}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    renderStravaSegments(data.segments || []);
+  } catch (err) {
+    box.innerHTML = `<div class="strava-error">${t("strava.error", err.message)}</div>`;
+  }
+}
+
+function renderStravaSegments(segments) {
+  const box = document.getElementById("strava-results");
+  if (!segments.length) {
+    box.innerHTML = `<div class="note">${t("strava.empty")}</div>`;
+    return;
+  }
+  box.innerHTML = `<ul class="segment-list">${segments.map(s => {
+    const km = (s.distance / 1000).toFixed(1);
+    const grade = s.avg_grade != null ? `${s.avg_grade}%` : "–";
+    const climb = s.climb_category != null ? s.climb_category : "–";
+    return `<li>
+      <a href="https://www.strava.com/segments/${s.id}" target="_blank" rel="noopener">${s.name}</a>
+      <div class="seg-meta">${t("strava.distance")}: ${km} km · ${t("strava.grade")}: ${grade} · ${t("strava.climb")}: ${climb}</div>
+    </li>`;
+  }).join("")}</ul>`;
+}
+
+function renderStravaConnectButton() {
+  const btn = document.getElementById("strava-connect");
+  if (stravaConnected()) {
+    btn.textContent = t("strava.disconnect");
+  } else {
+    btn.textContent = t("strava.connect");
+  }
+  btn.disabled = !stravaConfigured();
+}
+
+function handleStravaConnectClick() {
+  if (!stravaConfigured()) return;
+  if (stravaConnected()) {
+    setStravaTokens(null);
+    renderStravaConnectButton();
+    loadStravaSegments();
+  } else {
+    beginStravaAuth();
+  }
+}
+
+function handleStravaRedirect() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  const error = params.get("error");
+  if (!code && !error) return Promise.resolve();
+
+  // Clean the query string from the URL regardless of outcome.
+  const clean = location.origin + location.pathname;
+  history.replaceState({}, "", clean);
+
+  if (error) {
+    document.getElementById("strava-results").innerHTML =
+      `<div class="strava-error">${t("strava.authError", error)}</div>`;
+    return Promise.resolve();
+  }
+  return exchangeStravaCode(code)
+    .then(() => { renderStravaConnectButton(); })
+    .catch(err => {
+      document.getElementById("strava-results").innerHTML =
+        `<div class="strava-error">${t("strava.authError", err.message)}</div>`;
+    });
+}
+
+function initStrava() {
+  document.getElementById("strava-connect")
+    .addEventListener("click", handleStravaConnectClick);
+
+  document.querySelectorAll("#strava-sport-toggle button").forEach(b => {
+    b.classList.toggle("active", b.dataset.sport === stravaSport);
+    b.addEventListener("click", () => {
+      stravaSport = b.dataset.sport;
+      localStorage.setItem("strava_sport", stravaSport);
+      document.querySelectorAll("#strava-sport-toggle button").forEach(x =>
+        x.classList.toggle("active", x.dataset.sport === stravaSport));
+      loadStravaSegments();
+    });
+  });
+
+  renderStravaConnectButton();
+  handleStravaRedirect().then(() => loadStravaSegments());
+}
+
 /* ---------- init ---------- */
 document.querySelectorAll("#lang-selector button").forEach(b => {
   b.classList.toggle("active", b.dataset.lang === LANG);
@@ -597,6 +897,7 @@ applyStaticTranslations();
 updateCountdown();
 renderHikeOfDay();
 loadWeather();
+initStrava();
 </script>
 
 </body>
