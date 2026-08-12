@@ -40,6 +40,50 @@ no framework, no dependencies).
    actual trailhead, not just "Sölden" generally.
 6. **Bus plans**: link-out card → VVT journey planner, with the relevant line
    numbers noted (320, Skibus 44) since there's no way to prefill the planner.
+7. **Strava nearby segments**: OAuth2-connected card showing popular Strava
+   segments near the trailhead via `GET /api/v3/segments/explore`. This is *in
+   addition to* the AllTrails link-out, not a replacement.
+
+## Strava integration
+
+Why it's built the way it is (researched against the official v3 API reference):
+
+- Strava's in-app "Suggested Routes" (per-sport, per-location route generator)
+  is **not** in the public API. The closest public endpoint is
+  `segments/explore` → most popular segments in a bounding box. That's what the
+  card uses.
+- `segments/explore`'s `activity_type` only accepts `running` or `riding` — no
+  "hiking". The Foot/Bike toggle maps 🥾 Foot → `running`, 🚴 Bike → `riding`.
+- **OAuth2 needs a backend.** Strava's token exchange + refresh require the
+  `client_secret` (Strava has **no PKCE**), and access tokens expire every 6h.
+  A static site can't hold a secret, so a tiny **Vercel serverless proxy** holds
+  it. This is a deliberate, scoped exception to the "no backend" rule below —
+  it's the *only* secure way to do real Strava OAuth2. Don't try to move the
+  secret into `index.html`.
+
+Files:
+- `api/strava-token.mjs` — token exchange (`{code}`) and refresh
+  (`{refresh_token}`). Holds the secret; only returns
+  `access_token`/`refresh_token`/`expires_at` to the browser.
+- `api/strava-segments.mjs` — proxies `segments/explore`, forwarding the
+  browser's Bearer token (avoids relying on Strava CORS).
+- `vercel.json` — functions config (`api/*.mjs`). Files are `.mjs` so Vercel
+  treats them as ES modules.
+- `index.html` — Strava section, OAuth redirect handling, token storage in
+  `localStorage`, segment rendering, en/de/ru i18n (`strava.*` keys).
+
+Setup required to make it live (manual, non-secret bits go in the page):
+1. Create a Strava API app at https://www.strava.com/settings/api. Set
+   **Authorization Callback Domain** to the GitHub Pages domain
+   (e.g. `matthias-chlechowitz.github.io`). Copy Client ID + Client Secret.
+2. Deploy the `api/` folder to Vercel. Set env vars: `STRAVA_CLIENT_ID`,
+   `STRAVA_CLIENT_SECRET`, `ALLOWED_ORIGIN` (the GitHub Pages origin).
+3. In `index.html`, set `STRAVA_CLIENT_ID` and `STRAVA_PROXY_BASE` (the Vercel
+   URL, no trailing slash). Both are non-secret. Until they're filled in, the
+   card shows a "not configured" note and stays inert.
+
+Notes: `read` scope only (public segments); default rate limits (100/15min,
+1000/day) are fine for single-user use.
 
 ## Key values
 
