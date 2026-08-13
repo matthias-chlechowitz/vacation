@@ -349,7 +349,7 @@ const I18N = {
     "countdown.done": "Trip complete",
     "weather.title": "Weather & Forecast",
     "weather.loading": "Loading current conditions…",
-    "weather.note": "Live data from Open-Meteo. Forecast covers 16 days ahead; days beyond that aren't forecasted yet.",
+    "weather.note": "Live data from Open-Meteo. Nearest days use the high-resolution GeoSphere AROME Austria model; later days fall back to the best-match global forecast. Covers 16 days ahead.",
     "weather.wind": "wind",
     "weather.error": (m) => `Couldn't load weather: ${m}`,
     "weather.clickHint": "click for details",
@@ -398,7 +398,7 @@ const I18N = {
     "countdown.done": "Reise beendet",
     "weather.title": "Wetter & Vorhersage",
     "weather.loading": "Aktuelle Bedingungen werden geladen…",
-    "weather.note": "Live-Daten von Open-Meteo. Die Vorhersage umfasst 16 Tage im Voraus; spätere Tage sind noch nicht vorhergesagt.",
+    "weather.note": "Live-Daten von Open-Meteo. Die nächsten Tage nutzen das hochauflösende Modell GeoSphere AROME Österreich; spätere Tage greifen auf die Best-Match-Weltvorhersage zurück. Umfasst 16 Tage.",
     "weather.wind": "Wind",
     "weather.error": (m) => `Wetter konnte nicht geladen werden: ${m}`,
     "weather.clickHint": "für Details klicken",
@@ -447,7 +447,7 @@ const I18N = {
     "countdown.done": "Поездка завершена",
     "weather.title": "Погода и прогноз",
     "weather.loading": "Загрузка текущих условий…",
-    "weather.note": "Данные в реальном времени от Open-Meteo. Прогноз охватывает 16 дней вперёд; более поздние дни ещё не прогнозируются.",
+    "weather.note": "Данные в реальном времени от Open-Meteo. Ближайшие дни используют высокоточную модель GeoSphere AROME Австрия; более поздние дни берутся из глобального прогноза best-match. Охватывает 16 дней.",
     "weather.wind": "ветер",
     "weather.error": (m) => `Не удалось загрузить погоду: ${m}`,
     "weather.clickHint": "нажмите для подробностей",
@@ -635,12 +635,36 @@ function renderWeather() {
   });
 }
 
+// Models are queried in priority order: high-res GeoSphere AROME Austria
+// (~2.5 days ahead) first, then best_match fills the rest of the 16-day window.
+const WEATHER_MODELS = ["geosphere_arome_austria", "best_match"];
+const DAILY_VARS = ["weathercode", "temperature_2m_max", "temperature_2m_min", "apparent_temperature_max", "apparent_temperature_min", "precipitation_sum", "precipitation_probability_max", "windspeed_10m_max", "windgusts_10m_max", "winddirection_10m_dominant", "sunrise", "sunset", "uv_index_max"];
+
+// When multiple models are requested, Open-Meteo suffixes each daily variable
+// per model (e.g. temperature_2m_max_best_match). Flatten back to plain keys,
+// taking the first model that has a non-null value for each day.
+function mergeModels(daily) {
+  const merged = { time: daily.time };
+  for (const v of DAILY_VARS) {
+    merged[v] = daily.time.map((_, i) => {
+      for (const m of WEATHER_MODELS) {
+        const val = daily[`${v}_${m}`]?.[i];
+        if (val != null) return val;
+      }
+      return null;
+    });
+  }
+  return merged;
+}
+
 async function loadWeather() {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant,sunrise,sunset,uv_index_max&current_weather=true&timezone=Europe%2FVienna&forecast_days=16`;
+  const models = WEATHER_MODELS.join(",");
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=${DAILY_VARS.join(",")}&current_weather=true&timezone=Europe%2FVienna&forecast_days=16&models=${models}`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     weatherData = await res.json();
+    weatherData.daily = mergeModels(weatherData.daily);
     renderWeather();
   } catch (err) {
     document.getElementById("weather-error").textContent = t("weather.error", err.message);
